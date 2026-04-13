@@ -2,74 +2,115 @@ import * as vscode from 'vscode';
 import { analyseGitAge } from './analysers/gitAnalyser';
 import { scanTodos } from './analysers/todoScanner';
 import { computeDebtScore, DebtScore } from './analysers/debtScorer';
+import { DebtCache } from './debtCache';
+import { HeatmapDecorationProvider } from './heatmapDecorationProvider';
+import { createStatusBar } from './statusBar';
 
 export async function activate(context: vscode.ExtensionContext) {
   console.log('DebtLens is now active');
 
-  const scanCommand = vscode.commands.registerCommand(
-    'debtlens.scan',
-    async () => {
-      const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-      if (!root) {
-        vscode.window.showErrorMessage(
-          'DebtLens: Please open a folder/workspace first.'
-        );
-        return;
-      }
+  const cache = new DebtCache();
+  const decorationProvider = new HeatmapDecorationProvider(cache);
+  createStatusBar(cache, context);
 
-      await vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: 'DebtLens: Scanning workspace...',
-          cancellable: false,
-        },
-        async () => {
-          const [gitMap, todoMap] = await Promise.all([
-            analyseGitAge(root),
-            scanTodos(root),
-          ]);
+  context.subscriptions.push(
+    vscode.window.registerFileDecorationProvider(decorationProvider)
+  );
 
-          const allFiles = new Set([
-            ...gitMap.keys(),
-            ...todoMap.keys(),
-          ]);
-
-          const scores: DebtScore[] = [];
-
-          for (const filePath of allFiles) {
-            const score = computeDebtScore(
-              filePath,
-              gitMap.get(filePath),
-              todoMap.get(filePath)
-            );
-            scores.push(score);
-          }
-
-          scores.sort((a, b) => b.score - a.score);
-
-          console.log('=== DebtLens Results ===');
-          scores.forEach(s => {
-            console.log(
-              `[${s.level.toUpperCase().padEnd(8)}] ${s.score
-                .toString()
-                .padStart(3)}/100  ${s.filePath}`
-            );
-          });
-
-          const top3 = scores
-            .slice(0, 3)
-            .map(s => `${s.level} (${s.score}) — ${s.filePath}`)
-            .join('\n');
-
-          vscode.window.showInformationMessage(
-            `DebtLens: ${scores.length} files scanned. Top debt:\n${top3}`
-          );
-        }
+  const runScan = async () => {
+    const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!root) {
+      vscode.window.showErrorMessage(
+        'DebtLens: Please open a folder first.'
       );
+      return;
+    }
+
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: 'DebtLens: Scanning workspace...',
+        cancellable: false,
+      },
+      async () => {
+        const [gitMap, todoMap] = await Promise.all([
+          analyseGitAge(root),
+          scanTodos(root),
+        ]);
+
+        const allFiles = new Set([
+          ...gitMap.keys(),
+          ...todoMap.keys(),
+        ]);
+
+        const scores: DebtScore[] = [];
+        for (const filePath of allFiles) {
+          const score = computeDebtScore(
+            filePath,
+            gitMap.get(filePath),
+            todoMap.get(filePath)
+          );
+          scores.push(score);
+        }
+
+        scores.sort((a, b) => b.score - a.score);
+        cache.setAll(scores);
+
+        const critical = scores.filter(s => s.level === 'critical').length;
+        const high     = scores.filter(s => s.level === 'high').length;
+        const msg = `DebtLens: ${scores.length} files scanned. ` +
+          `${critical} critical, ${high} high debt files.`;
+
+        vscode.window.showInformationMessage(msg);
+        console.log('=== DebtLens Results ===');
+        scores.slice(0, 10).forEach(s => {
+          console.log(
+            `[${s.level.toUpperCase().padEnd(8)}] ` +
+            `${s.score.toString().padStart(3)}/100  ${s.filePath}`
+          );
+        });
+      }
+    );
+  };
+
+  const scanCommand = vscode.commands.registerCommand(  
+    'debtlens.scan', runScan
+  );
+
+  const clearCommand = vscode.commands.registerCommand(
+    'debtlens.clear', () => {
+      cache.clear();
+      vscode.window.showInformationMessage('DebtLens: Heatmap cleared.');
     }
   );
 
-  context.subscriptions.push(scanCommand);
+  context.subscriptions.push(scanCommand, clearCommand);
+
+   // Re-scan when any TS/JS file is saved
+  const watcher = vscode.workspace.createFileSystemWatcher(
+    '**/*.{ts,tsx,js,jsx}'
+  );
+
+  let debounceTimer: NodeJS.Timeout;
+  watcher.onDidChange(() => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(runScan, 2000);
+  });
+  watcher.onDidCreate(() => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(runScan, 2000);
+  });
+  watcher.onDidDelete(() => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(runScan, 2000);
+  });
+
+  context.subscriptions.push(watcher);
+
+  // Auto-scan on startup if workspace has files
+  if (vscode.workspace.workspaceFolders?.length) {
+    await runScan();
+  }
 }
 
 export function deactivate() {}

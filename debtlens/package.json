@@ -17,7 +17,13 @@
   "commands": [
     {
       "command": "debtlens.scan",
-      "title": "DebtLens: Scan Workspace"
+      "title": "DebtLens: Scan Workspace",
+      "icon": "$(search)"
+    },
+    {
+      "command": "debtlens.clear",
+      "title": "DebtLens: Clear Heatmap",
+      "icon": "$(clear-all)"
     }
   ]
 },
