@@ -5,11 +5,16 @@ import { computeDebtScore, DebtScore } from './analysers/debtScorer';
 import { DebtCache } from './debtCache';
 import { HeatmapDecorationProvider } from './heatmapDecorationProvider';
 import { createStatusBar } from './statusBar';
+import { ApiKeyManager } from './apiKeyManager';
+import { openAiPanel }   from './aiPanel';
+import { getMachineId }  from './machineId';
 
 export async function activate(context: vscode.ExtensionContext) {
   console.log('DebtLens is now active');
 
   const cache = new DebtCache();
+  const keyManager = new ApiKeyManager(context.secrets);
+  const machineId  = await getMachineId(context);
   const decorationProvider = new HeatmapDecorationProvider(cache);
   createStatusBar(cache, context);
 
@@ -85,6 +90,47 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(scanCommand, clearCommand);
+
+   const explainCommand = vscode.commands.registerCommand(
+    'debtlens.explain',
+    async () => {
+      const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!root) { return; }
+
+      const normRoot = root.replace(/\\/g, '/');
+      const activeUri = vscode.window.activeTextEditor?.document.uri.fsPath;
+      const relPath = activeUri
+        ? activeUri.replace(/\\/g, '/').split(normRoot + '/')[1]
+        : undefined;
+
+      if (!relPath) {
+        vscode.window.showErrorMessage(
+          'DebtLens: Open a file first, then run Explain.'
+        );
+        return;
+      }
+
+      const score = cache.get(relPath);
+      if (!score) {
+        vscode.window.showWarningMessage(
+          'DebtLens: No debt data for this file. Run a scan first.'
+        );
+        return;
+      }
+
+      await openAiPanel(score, root, keyManager, machineId);
+    }
+  );
+
+  const setKeyCommand = vscode.commands.registerCommand(
+    'debtlens.setApiKey', () => keyManager.promptForKey()
+  );
+
+  const clearKeyCommand = vscode.commands.registerCommand(
+    'debtlens.clearApiKey', () => keyManager.clearKey()
+  );
+
+  context.subscriptions.push(explainCommand, setKeyCommand, clearKeyCommand);
 
    // Re-scan when any TS/JS file is saved
   const watcher = vscode.workspace.createFileSystemWatcher(

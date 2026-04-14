@@ -24,6 +24,19 @@
       "command": "debtlens.clear",
       "title": "DebtLens: Clear Heatmap",
       "icon": "$(clear-all)"
+    },
+    {
+      "command": "debtlens.explain",
+      "title": "DebtLens: Explain Debt (AI)",
+      "icon": "$(sparkle)"
+    },
+    {
+      "command": "debtlens.setApiKey",
+      "title": "DebtLens: Set API Key (Unlimited)"
+    },
+    {
+      "command": "debtlens.clearApiKey",
+      "title": "DebtLens: Remove API Key"
     }
   ]
 },
