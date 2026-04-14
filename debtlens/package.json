@@ -1,45 +1,77 @@
 {
   "name": "debtlens",
   "displayName": "DebtLens",
-  "description": "Visualize tech debt as a heatmap in your file tree",
-  "version": "0.0.1",
-  "engines": {
-    "vscode": "^1.115.0"
+  "description": "Visualize tech debt as a heatmap in your VS Code file tree — with AI-powered fix plans via Groq.",
+  "version": "0.1.0",
+  "publisher": "tnikhil-24",
+  "author": {
+    "name": "tnikhil-24",
+    "url": "https://github.com/tnikhil-24"
   },
-  "categories": [
-    "Other"
+  "license": "MIT",
+  "homepage": "https://github.com/tnikhil-24/debtlens",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tnikhil-24/debtlens"
+  },
+  "bugs": {
+    "url": "https://github.com/tnikhil-24/debtlens/issues"
+  },
+  "keywords": [
+    "tech debt",
+    "heatmap",
+    "code quality",
+    "AI",
+    "refactoring",
+    "TODO",
+    "FIXME",
+    "git",
+    "code review",
+    "groq"
   ],
+  "categories": [
+    "Other",
+    "Linters"
+  ],
+  "icon": "assets/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e2e",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
   "activationEvents": [
-  "onStartupFinished"
+    "onStartupFinished"
   ],
   "main": "./dist/extension.js",
-"contributes": {
-  "commands": [
-    {
-      "command": "debtlens.scan",
-      "title": "DebtLens: Scan Workspace",
-      "icon": "$(search)"
-    },
-    {
-      "command": "debtlens.clear",
-      "title": "DebtLens: Clear Heatmap",
-      "icon": "$(clear-all)"
-    },
-    {
-      "command": "debtlens.explain",
-      "title": "DebtLens: Explain Debt (AI)",
-      "icon": "$(sparkle)"
-    },
-    {
-      "command": "debtlens.setApiKey",
-      "title": "DebtLens: Set API Key (Unlimited)"
-    },
-    {
-      "command": "debtlens.clearApiKey",
-      "title": "DebtLens: Remove API Key"
-    }
-  ]
-},
+  "contributes": {
+    "commands": [
+      {
+        "command": "debtlens.scan",
+        "title": "DebtLens: Scan Workspace",
+        "icon": "$(search)"
+      },
+      {
+        "command": "debtlens.clear",
+        "title": "DebtLens: Clear Heatmap",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "debtlens.explain",
+        "title": "DebtLens: Explain Debt (AI)",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "debtlens.setApiKey",
+        "title": "DebtLens: Set API Key (Unlimited)"
+      },
+      {
+        "command": "debtlens.clearApiKey",
+        "title": "DebtLens: Remove API Key"
+      }
+    ]
+  },
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "npm run check-types && npm run lint && node esbuild.js",
@@ -49,7 +81,7 @@
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "pretest": "npm run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run src"
@@ -57,7 +89,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "@types/vscode": "^1.115.0",
+    "@types/vscode": "^1.85.0",
     "@typescript-eslint/parser": "^8.58.1",
     "@typescript-eslint/typescript-estree": "^8.58.1",
     "@vscode/test-cli": "^0.0.12",
